@@ -8,7 +8,7 @@ int table_definitions_cnt;
 int record_extra_bytes;
 
 #include <tables_dict.h>
-//#include <table_defs.h>
+#include <table_defs.h>
 
 extern table_def_t table_definitions[1];
 extern bool deleted_pages_only;

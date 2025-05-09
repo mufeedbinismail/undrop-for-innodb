@@ -32,19 +32,10 @@ stream_parser.o: stream_parser.c include/mysql_def.h
 stream_parser: stream_parser.o
 	$(CC) $(CFLAGS) $(INC_PATH) $(LIB_PATH) $(LIBS) $(LDFLAGS) $< -o $@
 
-sql_parser.o: sql_parser.c
-	$(CC) $(CFLAGS) $(INC_PATH) -c $<
-
-sql_parser.c: sql_parser.y lex.yy.c
-	$(YACC) $(YACC_DEBUG) -o $@ $<
-
-lex.yy.c: sql_parser.l
-	$(LEX) $(LEX_DEBUG) $<
-
 c_parser.o: c_parser.c
 	$(CC) $(CFLAGS) $(INC_PATH) -c $<
 
-tables_dict.o: tables_dict.c
+tables_dict.o: tables_dict.c include/table_defs.h
 	$(CC) $(CFLAGS) $(INC_PATH) -c $<
 
 print_data.o: print_data.c
@@ -53,7 +44,7 @@ print_data.o: print_data.c
 check_data.o: check_data.c
 	$(CC) $(CFLAGS) $(INC_PATH) -c $<
 
-c_parser: sql_parser.o c_parser.o tables_dict.o print_data.o check_data.o
+c_parser: c_parser.o tables_dict.o print_data.o check_data.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(INC_PATH) $(LIB_PATH) $^ -o $@ $(LIBS)
 
 innochecksum_changer: innochecksum.c include/innochecksum.h

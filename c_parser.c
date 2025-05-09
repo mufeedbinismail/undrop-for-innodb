@@ -91,8 +91,6 @@ int use_filter_id = 0;
 FILE* f_result;
 FILE* f_sql;
 
-extern int load_table(char*);
-
 inline void error(char *msg) {
   fprintf(stderr, "Error: %s\n", msg);
   exit(1);
@@ -863,12 +861,6 @@ int main(int argc, char **argv) {
 	}
     if(src[0] == 0){
         usage();
-    }
-
-    if(load_table(table_schema) != 0){
-        fprintf(stderr, "Failed to parse table structure\n");
-        usage();
-        exit(EXIT_FAILURE);
     }
 
 	if(is_dir){
