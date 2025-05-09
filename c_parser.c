@@ -305,6 +305,12 @@ inline ibool check_fields_sizes(rec_t *rec, table_def_t *table, ulint *offsets) 
 	return TRUE;
 }
 
+inline void byteToBinary(unsigned char bt) {
+    for (int i = 8 - 1; i >= 0; i--) {
+        putchar((bt >> i) & 1 ? '1' : '0');
+    }
+}
+
 /*******************************************************************/
 inline ibool ibrec_init_offsets_new(page_t *page, rec_t* rec, table_def_t* table, ulint* offsets) {
 	ulint i = 0;
@@ -332,14 +338,27 @@ inline ibool ibrec_init_offsets_new(page_t *page, rec_t* rec, table_def_t* table
 	do {
 		ulint	len;
 		field_def_t *field = &(table->fields[i]);
-
 		/* nullable field => read the null flag */
 		if (field->can_be_null) {
+            if (debug) {
+                printf("\n1. NULLMASK %i -> %s: ", i, field->name);
+                byteToBinary(*nulls);
+                printf(" NULL MASK: ");
+                byteToBinary(null_mask);
+            }
+
 //			if (debug) printf("nullable field => read the null flag\n");
 			if (!(byte)null_mask) {
 				nulls--;
 				null_mask = 1;
 			}
+
+            if (debug) {
+                printf("\n2. NULLMASK %i -> %s: ", i, field->name);
+                byteToBinary(*nulls);
+                printf(" NULL MASK: ");
+                byteToBinary(null_mask);
+            }
 
 			if (*nulls & null_mask) {
 				null_mask <<= 1;
@@ -537,6 +556,11 @@ int check_page(page_t *page, unsigned int *n_records){
             if (debug) printf("Page is bad\n");
             return 0;
             }
+        if (debug) {
+            printf("\nRecord from offset 0x%X (%d) -> 0x%X (%d): \n", 0x0000FFFF & p_prev, p_prev, 0x0000FFFF & p, p);
+            ut_print_buf(stdout, page + p_prev, p - p_prev);
+            printf("\n\n");
+        }
 	p_prev = p;
         // Get next pointer
         if(comp){
