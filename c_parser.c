@@ -550,12 +550,12 @@ int check_page(page_t *page, unsigned int *n_records){
             if (debug) printf("Page is bad\n");
             return 0;
             }
-	//  If we've already was here, the page is bad
+        // If we've already been here, the page is bad
         if(p == p_prev){
             *n_records = 0;
             if (debug) printf("Page is bad\n");
             return 0;
-            }
+        }
         if (debug) {
             printf("\nRecord from offset 0x%X (%d) -> 0x%X (%d): \n", 0x0000FFFF & p_prev, p_prev, 0x0000FFFF & p, p);
             ut_print_buf(stdout, page + p_prev, p - p_prev);
@@ -641,40 +641,39 @@ void process_ibpage(page_t *page, bool hex) {
 		if (debug) printf("\nChecking offset: 0x%lX: ", offset);
 
 		// Check all tables
-		for (i = 0; i < table_definitions_cnt; i++) {
-			// Get table info
-			table_def_t *table = &(table_definitions[i]);
-			if (debug) printf(" (%s) ", table->name);
+        for (i = 0; i < table_definitions_cnt; i++) {
+            // Get table info
+            table_def_t *table = &(table_definitions[i]);
+            if (debug) printf(" (%s) ", table->name);
 
-			// Check if origin points to a valid record
-			if (check_for_a_record(page, origin, table, offsets) && check_constraints(origin, table, offsets)) {
-				actual_records++;
-				if (debug) printf("\n---------------------------------------------------\n"
-			       			  "PAGE%lu: Found a table %s record: %p (offset = %lu)\n", \
-						  page_id, table->name, origin, offset);
-                		if(is_page_valid){
-					process_ibrec(page, origin, table, offsets, hex);
-                    			b = mach_read_from_2(page + offset - 2);
-					offset = (comp) ? offset + b : b;
-                    			}
-				else{
-					offset += process_ibrec(page, origin, table, offsets, hex);
-                    			}
-                		if (debug) printf("Next offset: 0x%lX", offset);
-			   		break;
-		        	}
-            		else{
-                		if(is_page_valid){
-					b = mach_read_from_2(page + offset - 2);
-					offset = (comp) ? offset + b : b;
-                    			}
-				else{
-					offset++;
-					}
-                		if (debug) printf("\nNext offset: %lX", offset);
-               			}
-			}
-		}
+            // Check if origin points to a valid record
+            if (check_for_a_record(page, origin, table, offsets) && check_constraints(origin, table, offsets)) {
+                actual_records++;
+                if (debug) {
+                    printf("\n---------------------------------------------------\n"
+                           "PAGE%lu: Found a table %s record: %p (offset = %lu)\n", \
+                           page_id, table->name, origin, offset);
+                }
+                if (is_page_valid) {
+                    process_ibrec(page, origin, table, offsets, hex);
+                    b = mach_read_from_2(page + offset - 2);
+                    offset = (comp) ? offset + b : b;
+                } else {
+                    offset += process_ibrec(page, origin, table, offsets, hex);
+                }
+                if (debug) printf("Next offset: 0x%lX", offset);
+                break;
+            } else {
+                if (is_page_valid) {
+                    b = mach_read_from_2(page + offset - 2);
+                    offset = (comp) ? offset + b : b;
+                } else {
+                    offset++;
+                }
+                if (debug) printf("\nNext offset: %lX", offset);
+            }
+        }
+	}
 	fflush(f_result);
 	int leaf_page = mach_read_from_2(page + PAGE_HEADER + PAGE_LEVEL) == 0;
 	int lost_records = (actual_records != expected_records) && (actual_records != expected_records_inheader);
