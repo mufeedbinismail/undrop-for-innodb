@@ -236,8 +236,7 @@ table_def_t table_definitions[] = {
 					can_be_null: TRUE,
 					char_min_len: 0,
 					char_max_len: 48,
-					char_ascii_only: TRUE,
-                                        char_regex: "^(|[0-9]{12})$"
+					char_ascii_only: TRUE
 				},
 
 				can_be_null: TRUE
@@ -264,7 +263,7 @@ table_def_t table_definitions[] = {
 				has_limits: TRUE,
 				limits: {
 					can_be_null: FALSE,
-					int_min_val: 1,
+					int_min_val: 0,
 					int_max_val: 87000
 				},
 
@@ -626,8 +625,7 @@ table_def_t table_definitions[] = {
 					can_be_null: TRUE,
 					char_min_len: 0,
 					char_max_len: 765,
-					char_ascii_only: TRUE,
-                    char_regex: "^(|[0-9]+)$"
+					char_ascii_only: TRUE
 				},
 
 				can_be_null: TRUE
