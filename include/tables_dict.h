@@ -9,6 +9,25 @@
 #define MAX_TABLE_FIELDS 500
 #define MAX_ENUM_VALUES 65535
 #define MAX_SET_VALUES 64
+#define MAX_BITMAP_SIZE 5  // 5 bytes = 40 bits | 40 Columns
+#define MAX_BITMAP_COMBINATIONS 256 // Practical limit for bitmap combinations
+
+// Null likelihood enum
+typedef enum {
+    ALWAYS = 0,
+    VERY_LIKELY = 1,
+    LIKELY = 2,
+    FIFTY_FIFTY = 3,
+    UNLIKELY = 4,
+    VERY_UNLIKELY = 5,
+    NEVER = 6
+} likelihood_t;
+
+// Array of bitmap scores (for different alignments)
+typedef struct null_bitmaps {
+    byte bitmaps[MAX_BITMAP_COMBINATIONS][MAX_BITMAP_SIZE];
+    int count;
+} null_bitmaps_t;
 
 // Field limits type
 typedef struct field_limits {
@@ -75,6 +94,7 @@ typedef struct field_def {
 	unsigned int max_length;
 
 	ibool can_be_null;
+    likelihood_t likely_null;
 	int fixed_length;
 
     	// For DECIMAL numbers only
@@ -90,6 +110,7 @@ typedef struct field_def {
 
 typedef struct table_def {
 	char *name;
+    null_bitmaps_t null_maps;
 	field_def_t fields[MAX_TABLE_FIELDS];
 	int fields_count;
 	int data_min_size;
