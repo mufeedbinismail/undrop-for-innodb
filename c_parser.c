@@ -556,11 +556,6 @@ int check_page(page_t *page, unsigned int *n_records){
             if (debug) printf("Page is bad\n");
             return 0;
         }
-        if (debug) {
-            printf("\nRecord from offset 0x%X (%d) -> 0x%X (%d): \n", 0x0000FFFF & p_prev, p_prev, 0x0000FFFF & p, p);
-            ut_print_buf(stdout, page + p_prev, p - p_prev);
-            printf("\n\n");
-        }
 	p_prev = p;
         // Get next pointer
         if(comp){
