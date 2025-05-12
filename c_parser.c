@@ -706,10 +706,6 @@ void process_ibpage(page_t *page, bool hex) {
                 if (debug) printf("\nNext offset: %lX", offset);
             }
         }
-
-        if (z++ > 3) {
-            break;
-        }
 	}
 	fflush(f_result);
 	int leaf_page = mach_read_from_2(page + PAGE_HEADER + PAGE_LEVEL) == 0;
