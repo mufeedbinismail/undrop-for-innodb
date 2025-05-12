@@ -81,7 +81,7 @@ table_def_t table_definitions[] = {
                 limits: {
                     can_be_null: FALSE,
                     uint_min_val: 1,
-                    uint_max_val: 90000
+                    uint_max_val: 85500
                 },
 
                 can_be_null: FALSE,
@@ -96,7 +96,7 @@ table_def_t table_definitions[] = {
                 limits: {
                     can_be_null: FALSE,
                     uint_min_val: 0,
-                    uint_max_val: 100
+                    uint_max_val: 13
                 },
 
                 can_be_null: FALSE,
@@ -170,8 +170,8 @@ table_def_t table_definitions[] = {
                 has_limits: FALSE,
                 limits: {
                     can_be_null: TRUE,
-                    int_min_val: 1,
-                    int_max_val: 100
+                    int_min_val: 0,
+                    int_max_val: 0
                 },
 
                 can_be_null: TRUE,
@@ -251,13 +251,13 @@ table_def_t table_definitions[] = {
                 name: "reference",
                 type: FT_CHAR,
                 min_length: 0,
-                max_length: 100,
+                max_length: 60,
 
                 has_limits: TRUE,
                 limits: {
                     can_be_null: FALSE,
                     char_min_len: 0,
-                    char_max_len: 100,
+                    char_max_len: 9,
                     char_ascii_only: TRUE
                 },
 
@@ -283,13 +283,13 @@ table_def_t table_definitions[] = {
                 name: "barcode",
                 type: FT_CHAR,
                 min_length: 0,
-                max_length: 100,
+                max_length: 255,
 
                 has_limits: TRUE,
                 limits: {
                     can_be_null: TRUE,
                     char_min_len: 0,
-                    char_max_len: 48,
+                    char_max_len: 12,
                     char_ascii_only: TRUE
                 },
 
@@ -331,6 +331,13 @@ table_def_t table_definitions[] = {
                 type: FT_DOUBLE,
                 fixed_length: 8,
 
+                has_limits: TRUE,
+                limits: {
+                    can_be_null: FALSE,
+                    double_min_val: -20000,
+                    double_max_val: 400000
+                },
+
                 can_be_null: FALSE,
                 likely_null: NEVER
             },
@@ -338,6 +345,13 @@ table_def_t table_definitions[] = {
                 name: "ov_gst",
                 type: FT_DOUBLE,
                 fixed_length: 8,
+
+                has_limits: TRUE,
+                limits: {
+                    can_be_null: FALSE,
+                    double_min_val: 0,
+                    double_max_val: 3500
+                },
 
                 can_be_null: FALSE,
                 likely_null: NEVER
@@ -347,6 +361,13 @@ table_def_t table_definitions[] = {
                 type: FT_DOUBLE,
                 fixed_length: 8,
 
+                has_limits: TRUE,
+                limits: {
+                    can_be_null: FALSE,
+                    double_min_val: 0,
+                    double_max_val: 0
+                },
+
                 can_be_null: FALSE,
                 likely_null: NEVER
             },
@@ -354,6 +375,13 @@ table_def_t table_definitions[] = {
                 name: "ov_freight_tax",
                 type: FT_DOUBLE,
                 fixed_length: 8,
+
+                has_limits: TRUE,
+                limits: {
+                    can_be_null: FALSE,
+                    double_min_val: 0,
+                    double_max_val: 0
+                },
 
                 can_be_null: FALSE,
                 likely_null: NEVER
@@ -363,6 +391,13 @@ table_def_t table_definitions[] = {
                 type: FT_DOUBLE,
                 fixed_length: 8,
 
+                has_limits: TRUE,
+                limits: {
+                    can_be_null: FALSE,
+                    double_min_val: 0,
+                    double_max_val: 10
+                },
+
                 can_be_null: FALSE,
                 likely_null: NEVER
             },
@@ -370,6 +405,13 @@ table_def_t table_definitions[] = {
                 name: "commission",
                 type: FT_DECIMAL,
                 fixed_length: 4,
+
+                has_limits: TRUE,
+                limits: {
+                    can_be_null: FALSE,
+                    decimal_min_val: 0,
+                    decimal_max_val: 10000
+                },
 
                 decimal_precision: 8,
                 decimal_digits: 2,
@@ -381,6 +423,13 @@ table_def_t table_definitions[] = {
                 type: FT_DOUBLE,
                 fixed_length: 8,
 
+                has_limits: TRUE,
+                limits: {
+                    can_be_null: FALSE,
+                    double_min_val: 0,
+                    double_max_val: 0
+                },
+
                 can_be_null: FALSE,
                 likely_null: NEVER
             },
@@ -388,6 +437,13 @@ table_def_t table_definitions[] = {
                 name: "inc_ov_gst",
                 type: FT_DECIMAL,
                 fixed_length: 7,
+
+                has_limits: TRUE,
+                limits: {
+                    can_be_null: FALSE,
+                    decimal_min_val: 0,
+                    decimal_max_val: 30000
+                },
 
                 decimal_precision: 14,
                 decimal_digits: 2,
@@ -414,6 +470,13 @@ table_def_t table_definitions[] = {
                 type: FT_DOUBLE,
                 fixed_length: 8,
 
+                has_limits: TRUE,
+                limits: {
+                    can_be_null: FALSE,
+                    double_min_val: 0,
+                    double_max_val: 400000
+                },
+
                 can_be_null: FALSE,
                 likely_null: NEVER
             },
@@ -421,6 +484,13 @@ table_def_t table_definitions[] = {
                 name: "prep_amount",
                 type: FT_DOUBLE,
                 fixed_length: 8,
+
+                has_limits: TRUE,
+                limits: {
+                    can_be_null: FALSE,
+                    double_min_val: 0,
+                    double_max_val: 0
+                },
 
                 can_be_null: FALSE,
                 likely_null: NEVER
@@ -430,6 +500,13 @@ table_def_t table_definitions[] = {
                 type: FT_DOUBLE,
                 fixed_length: 8,
 
+                has_limits: TRUE,
+                limits: {
+                    can_be_null: FALSE,
+                    double_min_val: -50,
+                    double_max_val: 50
+                },
+
                 can_be_null: FALSE,
                 likely_null: NEVER
             },
@@ -437,6 +514,13 @@ table_def_t table_definitions[] = {
                 name: "credit_note_charge",
                 type: FT_DECIMAL,
                 fixed_length: 9,
+
+                has_limits: TRUE,
+                limits: {
+                    can_be_null: FALSE,
+                    decimal_min_val: 0,
+                    decimal_max_val: 0
+                },
 
                 decimal_precision: 18,
                 decimal_digits: 2,
@@ -448,6 +532,13 @@ table_def_t table_definitions[] = {
                 type: FT_DECIMAL,
                 fixed_length: 7,
 
+                has_limits: TRUE,
+                limits: {
+                    can_be_null: FALSE,
+                    decimal_min_val: 0,
+                    decimal_max_val: 0
+                },
+
                 decimal_precision: 14,
                 decimal_digits: 2,
                 can_be_null: FALSE,
@@ -457,6 +548,13 @@ table_def_t table_definitions[] = {
                 name: "income_recovered",
                 type: FT_DECIMAL,
                 fixed_length: 7,
+
+                has_limits: TRUE,
+                limits: {
+                    can_be_null: FALSE,
+                    decimal_min_val: 0,
+                    decimal_max_val: 0
+                },
 
                 decimal_precision: 14,
                 decimal_digits: 2,
@@ -468,6 +566,13 @@ table_def_t table_definitions[] = {
                 type: FT_DECIMAL,
                 fixed_length: 7,
 
+                has_limits: TRUE,
+                limits: {
+                    can_be_null: FALSE,
+                    decimal_min_val: 0,
+                    decimal_max_val: 0
+                },
+
                 decimal_precision: 14,
                 decimal_digits: 2,
                 can_be_null: FALSE,
@@ -477,7 +582,12 @@ table_def_t table_definitions[] = {
                 name: "days_income_recovered_for",
                 type: FT_DECIMAL,
                 fixed_length: 3,
-
+                has_limits: TRUE,
+                limits: {
+                    can_be_null: FALSE,
+                    decimal_min_val: 0,
+                    decimal_max_val: 0
+                },
                 decimal_precision: 6,
                 decimal_digits: 2,
                 can_be_null: FALSE,
@@ -487,7 +597,12 @@ table_def_t table_definitions[] = {
                 name: "rate",
                 type: FT_DOUBLE,
                 fixed_length: 8,
-
+                has_limits: TRUE,
+                limits: {
+                    can_be_null: FALSE,
+                    double_min_val: 1,
+                    double_max_val: 1
+                },
                 can_be_null: FALSE,
                 likely_null: NEVER
             },
@@ -515,7 +630,7 @@ table_def_t table_definitions[] = {
                 limits: {
                     can_be_null: FALSE,
                     int_min_val: 0,
-                    int_max_val: 50
+                    int_max_val: 30
                 },
 
                 can_be_null: FALSE,
@@ -530,7 +645,7 @@ table_def_t table_definitions[] = {
                 limits: {
                     can_be_null: FALSE,
                     int_min_val: 0,
-                    int_max_val: 50
+                    int_max_val: 0
                 },
 
                 can_be_null: FALSE,
@@ -544,8 +659,8 @@ table_def_t table_definitions[] = {
                 has_limits: TRUE,
                 limits: {
                     can_be_null: TRUE,
-                    int_min_val: 0,
-                    int_max_val: 7
+                    int_min_val: 4,
+                    int_max_val: 4
                 },
 
                 can_be_null: TRUE,

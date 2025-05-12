@@ -43,6 +43,14 @@ typedef struct field_limits {
 	unsigned long long int uint_min_val;
 	unsigned long long int uint_max_val;
 
+// min and max values for FT_DOUBLE fields
+    double double_min_val;
+    double double_max_val;
+
+    // min and max values for FT_DECIMAL fields
+    double decimal_min_val;
+    double decimal_max_val;
+
 	// min and max string length
 	long long int char_min_len;
 	long long int char_max_len;
