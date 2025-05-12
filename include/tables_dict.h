@@ -11,6 +11,8 @@
 #define MAX_SET_VALUES 64
 #define MAX_BITMAP_SIZE 5  // 5 bytes = 40 bits | 40 Columns
 #define MAX_BITMAP_COMBINATIONS 256 // Practical limit for bitmap combinations
+#define MAX_LENSMAP_SIZE 2  // 5 bytes = 40 bits | 40 Columns
+#define MAX_LENSMAP_COMBINATIONS 20 // Practical limit for bitmap combinations
 
 // Null likelihood enum
 typedef enum {
@@ -29,6 +31,11 @@ typedef struct null_bitmaps {
     int count;
 } null_bitmaps_t;
 
+typedef struct lens_maps {
+    byte lens[MAX_LENSMAP_COMBINATIONS][MAX_LENSMAP_SIZE];
+    int count;
+} lens_maps_t;
+
 // Field limits type
 typedef struct field_limits {
 	// In opposite to field.can_be_null, this field sets
@@ -39,11 +46,11 @@ typedef struct field_limits {
 	long long int int_min_val;
 	long long int int_max_val;
 
-	// min and max values for FT_UNT fields
-	unsigned long long int uint_min_val;
-	unsigned long long int uint_max_val;
+    // min and max values for FT_UNT fields
+    unsigned long long int uint_min_val;
+    unsigned long long int uint_max_val;
 
-// min and max values for FT_DOUBLE fields
+    // min and max values for FT_DOUBLE fields
     double double_min_val;
     double double_max_val;
 
@@ -119,6 +126,7 @@ typedef struct field_def {
 typedef struct table_def {
 	char *name;
     null_bitmaps_t null_maps;
+    lens_maps_t lens_maps;
 	field_def_t fields[MAX_TABLE_FIELDS];
 	int fields_count;
 	int data_min_size;

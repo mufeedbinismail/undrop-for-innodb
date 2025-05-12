@@ -40,6 +40,15 @@ table_def_t table_definitions[] = {
             },
             count: 30
         },
+        lens_maps: {
+            lens: {
+                {0x00, 0x00},
+                {0x0C, 0x09},
+                {0x0C, 0x04},
+                {0x00, 0x09},
+            },
+            count: 4
+        },
         {
             { /* bigint(20) */
                 name: "id",
@@ -50,7 +59,7 @@ table_def_t table_definitions[] = {
                 limits: {
                     can_be_null: FALSE,
                     int_min_val: 1,
-                    int_max_val: 23650
+                    int_max_val: 234650
                 },
 
                 can_be_null: FALSE,
