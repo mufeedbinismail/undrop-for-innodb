@@ -10,3 +10,4 @@ stream_parser
 .history
 *.page
 .vscode
+*.log
