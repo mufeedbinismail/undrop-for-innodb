@@ -802,7 +802,6 @@ void process_ibpage(page_t *page, bool hex) {
 	// Read page id
 	page_id = mach_read_from_4(page + FIL_PAGE_OFFSET);
 	if (debug) printf("Page id: %lu\n", page_id);
-	fprintf(f_result, "-- Page id: %lu", page_id);
 
 	if(table_definitions_cnt == 0){
 		fprintf(stderr, "There are no table definitions. Please check  include/table_defs.h\n");
@@ -812,7 +811,6 @@ void process_ibpage(page_t *page, bool hex) {
 
     // comp == 1 if page in COMPACT format and 0 if REDUNDANT
     comp = page_is_comp(page);
-    fprintf(f_result, ", Format: %s", (comp ) ? "COMPACT": "REDUNDANT");
     infimum = (comp) ? PAGE_NEW_INFIMUM : PAGE_OLD_INFIMUM;
     supremum = (comp) ? PAGE_NEW_SUPREMUM : PAGE_OLD_SUPREMUM;
 	// Find possible data area start point (at least 5 bytes of utility data)
@@ -823,10 +821,6 @@ void process_ibpage(page_t *page, bool hex) {
     else{
         offset = 50;
         }
-    	fprintf(f_result, ", Records list: %s", is_page_valid? "Valid": "Invalid");
-        expected_records_inheader = mach_read_from_2(page + PAGE_HEADER + PAGE_N_RECS);
-    	fprintf(f_result, ", Expected records: (%u %u)", expected_records, expected_records_inheader);
-    	fprintf(f_result, "\n");
 	if (debug) printf("Starting offset: %lu (%lX). Checking %d table definitions.\n", offset, offset, table_definitions_cnt);
 
 	// Walk through all possible positions to the end of page
@@ -872,21 +866,6 @@ void process_ibpage(page_t *page, bool hex) {
         }
 	}
 	fflush(f_result);
-	int leaf_page = mach_read_from_2(page + PAGE_HEADER + PAGE_LEVEL) == 0;
-	int lost_records = (actual_records != expected_records) && (actual_records != expected_records_inheader);
-	fprintf(f_result, "-- Page id: %lu", page_id);
-	fprintf(f_result, ", Found records: %u", actual_records);
-	fprintf(f_result, ", Lost records: %s", lost_records ? "YES": "NO");
-	fprintf(f_result, ", Leaf page: %s", leaf_page ? "YES": "NO");
-	fprintf(f_result, "\n");
-	if (leaf_page) {
-	    records_expected_total += expected_records_inheader;
-	    records_dumped_total += actual_records;
-	    if (lost_records) {
-	        records_lost = 1;
-	    }
-	}
-
 }
 
 /*******************************************************************/
