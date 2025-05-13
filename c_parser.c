@@ -8,6 +8,9 @@
 #include <string.h>
 #include <sys/dir.h>
 
+#include <wchar.h>
+#include <locale.h>
+
 //#include <error.h>
 #include <tables_dict.h>
 #include <print_data.h>
@@ -100,6 +103,140 @@ inline void error(char *msg) {
 unsigned long records_expected_total = 0;
 unsigned long records_dumped_total = 0;
 int records_lost = 0;
+
+inline void ut_print_hex(
+    FILE*       file,   /* in: file where to print */
+    const byte* buf,    /* in: memory buffer */
+    ulint       len)    /* in: length of the buffer */
+{
+    const byte* data;
+    ulint       i;
+
+    for (data = buf, i = 0; i < len; i++) {
+        fprintf(file, "0x%02X", *data++);
+    }
+}
+
+bool is_arabic_codepoint(wchar_t wc) {
+    return (wc >= 0x0600 && wc <= 0x06FF) || // Basic Arabic
+           (wc >= 0x0750 && wc <= 0x077F) || // Arabic Supplement
+           (wc >= 0x08A0 && wc <= 0x08FF) || // Arabic Extended-A
+           (wc >= 0xFB50 && wc <= 0xFDFF) || // Arabic Presentation Forms-A
+           (wc >= 0xFE70 && wc <= 0xFEFF);   // Arabic Presentation Forms-B
+}
+
+/**
+ * Determines the length of a UTF-8 character based on its starting byte
+ * 
+ * @param c The starting byte of a potential UTF-8 character
+ * @return The expected length of the UTF-8 character, or 0 if invalid
+ */
+int utf8_char_length(unsigned char c) {
+    if (c < 0x80) return 1;                // ASCII character (0xxxxxxx)
+    if ((c & 0xE0) == 0xC0) return 2;      // 2-byte UTF-8 (110xxxxx)
+    if ((c & 0xF0) == 0xE0) return 3;      // 3-byte UTF-8 (1110xxxx)
+    // if ((c & 0xF8) == 0xF0) return 4;      // 4-byte UTF-8 (11110xxx)
+    return 0;                              // Invalid UTF-8 starting byte
+}
+
+/**
+ * Checks if a UTF-8 character is printable and specifically handles Arabic characters
+ * 
+ * @param wc The wide character to check
+ * @return 1 if the character is printable, 0 otherwise
+ */
+int is_printable_utf8(wchar_t wc) {
+    // Check for normal printable ASCII characters
+    if (wc >= 32 && wc <= 126) {
+        return 1;
+    }
+    
+    // Check for Arabic character range (U+0600 to U+06FF)
+    if (wc >= 0x0600 && wc <= 0x06FF) {
+        return 1;
+    }
+    
+    // Add additional ranges as needed:
+    // Arabic Supplement (U+0750 to U+077F)
+    if (wc >= 0x0750 && wc <= 0x077F) {
+        return 1;
+    }
+    
+    // Arabic Extended-A (U+08A0 to U+08FF)
+    if (wc >= 0x08A0 && wc <= 0x08FF) {
+        return 1;
+    }
+    
+    // Common printable Unicode characters
+    if (iswprint(wc)) {
+        return 1;
+    }
+    
+    return 0;
+}
+
+/**
+ * Prints UTF-8 data as characters if printable, otherwise as hex
+ * 
+ * @param file Output file stream
+ * @param data Pointer to UTF-8 data
+ * @param len Length of data in bytes
+ */
+void print_utf8_or_hex(FILE *file, const unsigned char *data, int len) {
+    // Set locale to handle wide characters properly
+    if (!setlocale(LC_ALL, "en_US.UTF-8")) {
+        // Try with a fallback locale
+        if (!setlocale(LC_ALL, "C.UTF-8")) {
+            fprintf(stderr, "Warning: Could not set locale for wide character output.\n");
+        }
+    }
+
+    for (int i = 0; i < len; ) {
+        unsigned char c = data[i];
+        int char_len = utf8_char_length(c);
+        
+        // Check if we have a valid UTF-8 character
+        if (char_len > 0 && i + char_len <= len) {
+            // Verify this is actually a valid UTF-8 sequence
+            int valid_utf8 = 1;
+            for (int j = 1; j < char_len; j++) {
+                if ((data[i + j] & 0xC0) != 0x80) { // Check continuation bytes (10xxxxxx)
+                    valid_utf8 = 0;
+                    break;
+                }
+            }
+            
+            if (valid_utf8) {
+                // Attempt to convert to wide character
+                mbstate_t state = {0};
+                wchar_t wc;
+                size_t bytes_read = mbrtowc(&wc, (const char *)&data[i], char_len, &state);
+                
+                if (bytes_read != (size_t)-1 && bytes_read != (size_t)-2 && is_printable_utf8(wc)) {
+                    // Successfully converted to a printable character
+                    fputwc(wc, file);
+                    i += char_len;
+                } else {
+                    // Not a printable character, print as hex
+                    fprintf(file, "0x%02X", c);
+                    i++;
+                }
+            } else {
+                // Invalid UTF-8 sequence, print as hex
+                fprintf(file, "0x%02X", c);
+                i++;
+            }
+        } else {
+            // Single byte or invalid UTF-8 starting byte
+            if (c >= 32 && c <= 126) { // ASCII printable range
+                fputc(c, file);
+            } else {
+                fprintf(file, "0x%02X", c);
+            }
+            i++;
+        }
+    }
+}
 
 /*****************************************************************
  * Prints the contents of a memory buffer in hex and ascii. */
