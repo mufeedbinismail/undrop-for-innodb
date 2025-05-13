@@ -58,8 +58,8 @@ table_def_t table_definitions[] = {
                 has_limits: TRUE,
                 limits: {
                     can_be_null: FALSE,
-                    int_min_val: 1,
-                    int_max_val: 234650
+                    int_min_val: 234256,
+                    int_max_val: 234900
                 },
 
                 can_be_null: FALSE,

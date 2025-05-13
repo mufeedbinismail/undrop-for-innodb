@@ -273,6 +273,7 @@ ut_print_buf(
 ulint process_ibrec(page_t *page, rec_t *rec, table_def_t *table, ulint *offsets, bool hex, ulint offset) {
 	ulint data_size;
 	int i;
+    ulint len_sum = 0;
 	// Print trx_id and rollback pointer
 	for(i = 0; i < table->fields_count; i++) {
 		ulint len;
@@ -312,7 +313,9 @@ ulint process_ibrec(page_t *page, rec_t *rec, table_def_t *table, ulint *offsets
                 } else {
 			        print_field_value(field, len, &(table->fields[i]), hex);
                     }
-		    }
+
+            len_sum += len;
+		}
 
 		if (i < table->fields_count - 1) fprintf(f_result, "\t");
 		if (debug) printf("\n");
@@ -333,7 +336,7 @@ ulint process_ibrec(page_t *page, rec_t *rec, table_def_t *table, ulint *offsets
 
     print_utf8_or_hex(f_result, rec + offsets[i + 1], remaining_length);
 	fprintf(f_result, "\n\n\n");
-	return data_size; // point to the next possible record's start
+	return 165; // point to the next possible record's start
 }
 
 /*******************************************************************/
@@ -818,7 +821,7 @@ void process_ibpage(page_t *page, bool hex) {
         offset = (comp) ? infimum + b : b;
         }
     else{
-        offset = 100 + record_extra_bytes;
+        offset = 50;
         }
     	fprintf(f_result, ", Records list: %s", is_page_valid? "Valid": "Invalid");
         expected_records_inheader = mach_read_from_2(page + PAGE_HEADER + PAGE_N_RECS);
@@ -857,7 +860,6 @@ void process_ibpage(page_t *page, bool hex) {
                     offset += process_ibrec(page, origin, table, offsets, hex, offset);
                 }
                 if (debug) printf("Next offset: 0x%lX", offset);
-                break;
             } else {
                 if (is_page_valid) {
                     b = mach_read_from_2(page + offset - 2);
