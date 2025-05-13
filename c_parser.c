@@ -270,7 +270,7 @@ ut_print_buf(
 }
 
 /*******************************************************************/
-ulint process_ibrec(page_t *page, rec_t *rec, table_def_t *table, ulint *offsets, bool hex) {
+ulint process_ibrec(page_t *page, rec_t *rec, table_def_t *table, ulint *offsets, bool hex, ulint offset) {
 	ulint data_size;
 	int i;
 	// Print trx_id and rollback pointer
@@ -316,8 +316,23 @@ ulint process_ibrec(page_t *page, rec_t *rec, table_def_t *table, ulint *offsets
 
 		if (i < table->fields_count - 1) fprintf(f_result, "\t");
 		if (debug) printf("\n");
+
+        if (i == 29) {
+            break;
+        }
 	}
-	fprintf(f_result, "\n");
+    ulint next_rec_offset = mach_read_from_2(rec - 2) - 1 - REC_N_NEW_EXTRA_BYTES - (table->n_nullable + 7) / 8;
+    ulint remaining_length = (next_rec_offset - offsets[i+1]);
+    if (remaining_length > 5000) {
+        remaining_length = 5000;
+    }
+    
+    if (offset + offsets[i + 1] + remaining_length > UNIV_PAGE_SIZE) {
+        remaining_length = UNIV_PAGE_SIZE - offset - offsets[i + 1] - 1;
+    }
+
+    print_utf8_or_hex(f_result, rec + offsets[i + 1], remaining_length);
+	fprintf(f_result, "\n\n\n");
 	return data_size; // point to the next possible record's start
 }
 
@@ -325,6 +340,7 @@ ulint process_ibrec(page_t *page, rec_t *rec, table_def_t *table, ulint *offsets
 inline ibool check_constraints(rec_t *rec, table_def_t* table, ulint* offsets) {
 	int i;
     ulint len_sum = 0;
+    ibool is_valid = TRUE;
 
 	if (debug) {
 		printf("\nChecking constraints for a row (%s) at %p:", table->name, rec);
@@ -352,7 +368,8 @@ inline ibool check_constraints(rec_t *rec, table_def_t* table, ulint* offsets) {
 		if (len == UNIV_SQL_NULL) {
 			if (table->fields[i].has_limits && !table->fields[i].limits.can_be_null) {
 				if (debug) printf("data can't be NULL");
-				return FALSE;
+				is_valid = FALSE;
+                goto outside_the_loop;
 			}
 			continue;
 		}
@@ -361,10 +378,14 @@ inline ibool check_constraints(rec_t *rec, table_def_t* table, ulint* offsets) {
 		if (!table->fields[i].has_limits) continue;
 		if (!check_field_limits(&(table->fields[i]), field, len)) {
 			if (debug) printf("LIMITS check failed(field = %p, len = %ld)!\n", field, len);
-			return FALSE;
+			is_valid = FALSE;
+            goto outside_the_loop;
 		}
+
+        if (i == 29) goto outside_the_loop;
 	}
 
+    outside_the_loop:
     // Why do we need this check?
     /*
     if (len_sum != rec_offs_data_size(offsets)) {
@@ -376,8 +397,8 @@ inline ibool check_constraints(rec_t *rec, table_def_t* table, ulint* offsets) {
             }
     */
 
-	if (debug) printf("\nRow looks OK!\n");
-	return TRUE;
+	if (debug && is_valid) printf("\nRow looks OK!\n");
+	return is_valid;
 }
 
 /*******************************************************************/
@@ -398,17 +419,15 @@ inline ibool check_fields_sizes(rec_t *rec, table_def_t *table, ulint *offsets) 
 	}
 
 	// check every field
-	for(i = 0; i < table->fields_count; i++) {
+	for(i = 0; i <= 29; i++) {
 		// Get field size
 		ulint len = rec_offs_nth_size(offsets, i);
-		if (debug) printf("\n - field %s(%lu):", table->fields[i].name, len);
 
 		// If field is null
 		if (len == UNIV_SQL_NULL) {
 			// Check if it can be null and jump to a next field if it is OK
 			if (table->fields[i].can_be_null) continue;
 			// Invalid record where non-nullable field is NULL
-			if (debug) printf("Can't be NULL or zero-length!\n");
 			return FALSE;
 		}
 
@@ -417,25 +436,19 @@ inline ibool check_fields_sizes(rec_t *rec, table_def_t *table, ulint *offsets) 
 			// Check if size is the same and jump to the next field if it is OK
 			if (len == table->fields[i].fixed_length || (len == 0 && table->fields[i].can_be_null)) continue;
 			// Invalid fixed length field
-			if (debug) printf("Invalid fixed length field size: %lu, but should be %u!\n", len, table->fields[i].fixed_length);
 			return FALSE;
 		}
 
 		// Check if has externally stored data
 		if (rec_offs_nth_extern(offsets, i)) {
-			if (debug) printf("\nEXTERNALLY STORED VALUE FOUND in field %i\n", i);
 			if (table->fields[i].type == FT_TEXT || table->fields[i].type == FT_BLOB) continue;
-			if (debug) printf("Invalid external data flag!\n");
 			return FALSE;
 		}
 
 		// Check size limits for varlen fields
 		if (len < table->fields[i].min_length || len > table->fields[i].max_length) {
-			if (debug) printf("Length limits check failed (%lu < %u || %lu > %u)!\n", len, table->fields[i].min_length, len, table->fields[i].max_length);
 			return FALSE;
 		}
-
-		if (debug) printf("OK!");
 	}
 
 	if (debug) printf("\n");
@@ -449,18 +462,25 @@ inline void byteToBinary(unsigned char bt) {
 }
 
 /*******************************************************************/
-inline ibool ibrec_init_offsets_new(page_t *page, rec_t* rec, table_def_t* table, ulint* offsets, const byte* m_nulls, int k) {
+inline ibool ibrec_init_offsets_new(
+    page_t *page,
+    rec_t* rec,
+    table_def_t* table,
+    ulint* offsets,
+    const byte* m_nulls,
+    const byte* lens
+) {
     ulint i = 0;
     ulint offs;
-	const byte* nulls;
-    const byte* lens;
-    byte* lens_2;
     const int BUFFLEN = 5;
     ulint null_mask;
     ulint status = rec_get_status(rec);
 
     // Skip non-ordinary records
-    if (status != REC_STATUS_ORDINARY) return FALSE;
+    // if (status != REC_STATUS_ORDINARY) {
+    //     if (debug) printf("Invalid record status: %lu\n", status);
+    //     return FALSE;
+    // }
 
     // First field is 0 bytes from origin point
     rec_offs_base(offsets)[0] = 0;
@@ -468,17 +488,6 @@ inline ibool ibrec_init_offsets_new(page_t *page, rec_t* rec, table_def_t* table
     // Init first bytes
     rec_offs_set_n_fields(offsets, table->fields_count);
 
-	nulls = rec - (REC_N_NEW_EXTRA_BYTES + 1);
-    lens = nulls - (table->n_nullable + 7) / 8;
-    if (debug) {
-        printf("\nPoints To Length : ");
-        lens_2 = nulls - BUFFLEN - (table->n_nullable + 7) / 8;
-        ut_print_buf(stdout, lens_2, BUFFLEN * 2);
-        printf("\n");
-        byteToBinary(*nulls);
-        printf(" LENS: ");
-        byteToBinary(*lens);
-    }
     offs = 0;
     null_mask = 1;
 
@@ -488,23 +497,9 @@ inline ibool ibrec_init_offsets_new(page_t *page, rec_t* rec, table_def_t* table
         field_def_t *field = &(table->fields[i]);
         /* nullable field => read the null flag */
         if (field->can_be_null) {
-            if (debug) {
-                printf("\n1. NULLMASK %i -> %s: ", i, field->name);
-                byteToBinary(*m_nulls);
-                printf(" NULL MASK: ");
-                byteToBinary(null_mask);
-            }
-
             if (!(byte)null_mask) {
                 m_nulls--;
                 null_mask = 1;
-            }
-
-            if (debug) {
-                printf("\n2. NULLMASK %i -> %s: ", i, field->name);
-                byteToBinary(*m_nulls);
-                printf(" NULL MASK: ");
-                byteToBinary(null_mask);
             }
 
             if (*m_nulls & null_mask) {
@@ -551,7 +546,7 @@ inline ibool ibrec_init_offsets_new(page_t *page, rec_t* rec, table_def_t* table
             return FALSE;
         }
         rec_offs_base(offsets)[i + 1] = len;
-    } while (++i < table->fields_count);
+    } while (i != 29 && ++i < table->fields_count);
 
     return TRUE;
 }
@@ -626,12 +621,20 @@ inline ibool check_for_a_record(page_t *page, rec_t *rec, table_def_t *table, ul
     int i = 0;
     int comp = page_is_comp(page);
     null_bitmaps_t *null_maps = &(table->null_maps);
+    lens_maps_t *lens_maps = &(table->lens_maps);
 
     if (comp) {
         const byte* nulls = rec - (REC_N_NEW_EXTRA_BYTES + 1);
+        const byte* lens = nulls - (table->n_nullable + 7) / 8;
+
         for (int k = MAX_BITMAP_SIZE - 1; k >= 0; k--) {
             null_maps->bitmaps[0][k] = *nulls;
             nulls--;
+        }
+
+        for (int k = MAX_LENSMAP_SIZE -1; k >= 0; k--) {
+            lens_maps->lens[0][k] = *lens;
+            lens--;
         }
     }
 
@@ -651,38 +654,60 @@ inline ibool check_for_a_record(page_t *page, rec_t *rec, table_def_t *table, ul
     do {
         // Get field offsets for current table
         if (debug) {
-            printf("\nBITMAP ATTEMPT %i\n", i + 1);
+            printf("\nBITMAP ATTEMPT %i: ", i + 1);
             for (int k = 0; k < MAX_BITMAP_SIZE; k++) {
                 byteToBinary(null_maps->bitmaps[i][k]);
                 printf(" ");
             }
-            printf("\n");
         }
         
         int k = 0;
         do {
-            is_valid = TRUE;
-            if (comp && !ibrec_init_offsets_new(page, rec, table, offsets, &(null_maps->bitmaps[i][MAX_BITMAP_SIZE -1]), k)) is_valid = FALSE;
+            if (debug) {
+                printf("\nLENGTH MAPS ATTEMPT %i: 0x%02X 0x%02X", k + 1, lens_maps->lens[i][MAX_LENSMAP_SIZE - 2], lens_maps->lens[k][MAX_LENSMAP_SIZE - 1]);
+            }
 
-            if (!comp && !ibrec_init_offsets_old(page, rec, table, offsets)) is_valid = FALSE;
+            is_valid = TRUE;
+            if (comp && !ibrec_init_offsets_new(
+                page,
+                rec,
+                table,
+                offsets,
+                &(null_maps->bitmaps[i][MAX_BITMAP_SIZE -1]),
+                &(lens_maps->lens[k][MAX_LENSMAP_SIZE - 1])
+            )) {
+               is_valid = FALSE;
+               if (debug) printf("\nOFFSET_INIT=FAIL ");
+            }
+
+            if (is_valid && !comp && !ibrec_init_offsets_old(page, rec, table, offsets)) {
+                is_valid = FALSE;
+                if (debug) printf("\nOFFSET_INIT=FAIL ");
+            }
 
             // Check the record's data size
             data_size = rec_offs_data_size(offsets);
-            if (data_size > table->data_max_size) {
+            if (is_valid && data_size > table->data_max_size) {
                 if (debug) printf("DATA_SIZE=FAIL(%lu > %ld) ", (long int)data_size, (long int)table->data_max_size);
                 is_valid = FALSE;
             }
-            if (data_size < table->data_min_size) {
+            if (is_valid && data_size < table->data_min_size) {
                 if (debug) printf("DATA_SIZE=FAIL(%lu < %lu) ", (long int)data_size, (long int)table->data_min_size);
                 is_valid = FALSE;
             }
 
             // Check fields sizes
-            if (!check_fields_sizes(rec, table, offsets)) is_valid = FALSE;
+            if (is_valid && !check_fields_sizes(rec, table, offsets)) {
+                is_valid = FALSE;
+                if (debug) printf("FIELDS_SIZE=FAIL ");
+            }
             
             // Check data constraints
-            if (!check_constraints(rec, table, offsets)) is_valid = FALSE;
-        } while (!is_valid && ++k < 2);
+            if (is_valid && !check_constraints(rec, table, offsets)) {
+                is_valid = FALSE;
+                if (debug) printf("CONSTRAINTS=FAIL ");
+            }
+        } while (++k < lens_maps->count && comp && !is_valid);
     } while (i++ < null_maps->count && comp && !is_valid);
 
 	// This record could be valid and useful for us
@@ -780,7 +805,7 @@ void process_ibpage(page_t *page, bool hex) {
 		fprintf(stderr, "There are no table definitions. Please check  include/table_defs.h\n");
 		exit(EXIT_FAILURE);
 		}
-    is_page_valid = check_page(page, &expected_records);
+    // is_page_valid = check_page(page, &expected_records);
 
     // comp == 1 if page in COMPACT format and 0 if REDUNDANT
     comp = page_is_comp(page);
@@ -825,11 +850,11 @@ void process_ibpage(page_t *page, bool hex) {
                            page_id, table->name, origin, offset);
                 }
                 if (is_page_valid) {
-                    process_ibrec(page, origin, table, offsets, hex);
+                    process_ibrec(page, origin, table, offsets, hex, offset);
                     b = mach_read_from_2(page + offset - 2);
                     offset = (comp) ? offset + b : b;
                 } else {
-                    offset += process_ibrec(page, origin, table, offsets, hex);
+                    offset += process_ibrec(page, origin, table, offsets, hex, offset);
                 }
                 if (debug) printf("Next offset: 0x%lX", offset);
                 break;
