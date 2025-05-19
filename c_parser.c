@@ -135,7 +135,7 @@ int utf8_char_length(unsigned char c) {
     if (c < 0x80) return 1;                // ASCII character (0xxxxxxx)
     if ((c & 0xE0) == 0xC0) return 2;      // 2-byte UTF-8 (110xxxxx)
     if ((c & 0xF0) == 0xE0) return 3;      // 3-byte UTF-8 (1110xxxx)
-    // if ((c & 0xF8) == 0xF0) return 4;      // 4-byte UTF-8 (11110xxx)
+    if ((c & 0xF8) == 0xF0) return 4;      // 4-byte UTF-8 (11110xxx)
     return 0;                              // Invalid UTF-8 starting byte
 }
 
@@ -150,13 +150,13 @@ int is_printable_utf8(wchar_t wc) {
     if (wc >= 32 && wc <= 126) {
         return 1;
     }
-    
-    // Check for Arabic character range (U+0600 to U+06FF)
+
+    // Arabic character ranges
+    // Basic Arabic (U+0600 to U+06FF)
     if (wc >= 0x0600 && wc <= 0x06FF) {
         return 1;
     }
     
-    // Add additional ranges as needed:
     // Arabic Supplement (U+0750 to U+077F)
     if (wc >= 0x0750 && wc <= 0x077F) {
         return 1;
@@ -167,8 +167,13 @@ int is_printable_utf8(wchar_t wc) {
         return 1;
     }
     
-    // Common printable Unicode characters
-    if (iswprint(wc)) {
+    // Arabic Presentation Forms-A (U+FB50 to U+FDFF)
+    if (wc >= 0xFB50 && wc <= 0xFDFF) {
+        return 1;
+    }
+    
+    // Arabic Presentation Forms-B (U+FE70 to U+FEFF)
+    if (wc >= 0xFE70 && wc <= 0xFEFF) {
         return 1;
     }
     
@@ -335,7 +340,7 @@ ulint process_ibrec(page_t *page, rec_t *rec, table_def_t *table, ulint *offsets
     }
 
     print_utf8_or_hex(f_result, rec + offsets[i + 1], remaining_length);
-	fprintf(f_result, "\n\n\n");
+	fprintf(f_result, "\n");
 	return 165; // point to the next possible record's start
 }
 
@@ -347,7 +352,8 @@ inline ibool check_constraints(rec_t *rec, table_def_t* table, ulint* offsets) {
 
 	if (debug) {
 		printf("\nChecking constraints for a row (%s) at %p:", table->name, rec);
-		ut_print_buf(stdout, rec, 100);
+		print_utf8_or_hex(stdout, rec, 75);
+        printf("\n");
 	}
 
 	// Check every field
@@ -355,7 +361,6 @@ inline ibool check_constraints(rec_t *rec, table_def_t* table, ulint* offsets) {
 		// Get field value pointer and field length
 		ulint len;
 		byte *field = rec_get_nth_field(rec, offsets, i, &len);
-		if (debug) printf("\n - field %s(addr = %p, len = %lu):", table->fields[i].name, field, len);
 
         if (len != UNIV_SQL_NULL) {
             len_sum += len;
@@ -370,7 +375,7 @@ inline ibool check_constraints(rec_t *rec, table_def_t* table, ulint* offsets) {
 		// Skip null fields from type checks and fail if null is not allowed by data limits
 		if (len == UNIV_SQL_NULL) {
 			if (table->fields[i].has_limits && !table->fields[i].limits.can_be_null) {
-				if (debug) printf("data can't be NULL");
+				if (debug) printf("\n - field %s(addr = %p, len = %lu): data can't be NULL\n", table->fields[i].name, field, len);
 				is_valid = FALSE;
                 goto outside_the_loop;
 			}
@@ -380,7 +385,7 @@ inline ibool check_constraints(rec_t *rec, table_def_t* table, ulint* offsets) {
 		// Check limits
 		if (!table->fields[i].has_limits) continue;
 		if (!check_field_limits(&(table->fields[i]), field, len)) {
-			if (debug) printf("LIMITS check failed(field = %p, len = %ld)!\n", field, len);
+			if (debug) printf(" -- field %s(addr = %p, len = %lu): LIMITS check failed\n", table->fields[i].name, field, len);
 			is_valid = FALSE;
             goto outside_the_loop;
 		}
@@ -408,18 +413,18 @@ inline ibool check_constraints(rec_t *rec, table_def_t* table, ulint* offsets) {
 inline ibool check_fields_sizes(rec_t *rec, table_def_t *table, ulint *offsets) {
 	int i;
 
-	if (debug) {
-		printf("\nChecking field lengths for a row (%s): ", table->name);
-		printf("OFFSETS: ");
-		unsigned long int prev_offset = 0;
-		unsigned long int curr_offset = 0;
-		for(i = 0; i < rec_offs_n_fields(offsets); i++) {
-			curr_offset = rec_offs_base(offsets)[i];
-			printf("%lu (+%lu); ", curr_offset, curr_offset - prev_offset);
-			prev_offset = curr_offset;
-		}
-//		printf("\n");
-	}
+// 	if (debug) {
+// 		printf("\nChecking field lengths for a row (%s): ", table->name);
+// 		printf("OFFSETS: ");
+// 		unsigned long int prev_offset = 0;
+// 		unsigned long int curr_offset = 0;
+// 		for(i = 0; i < rec_offs_n_fields(offsets); i++) {
+// 			curr_offset = rec_offs_base(offsets)[i];
+// 			printf("%lu (+%lu); ", curr_offset, curr_offset - prev_offset);
+// 			prev_offset = curr_offset;
+// 		}
+// //		printf("\n");
+// 	}
 
 	// check every field
 	for(i = 0; i <= 29; i++) {
@@ -454,7 +459,7 @@ inline ibool check_fields_sizes(rec_t *rec, table_def_t *table, ulint *offsets) 
 		}
 	}
 
-	if (debug) printf("\n");
+	// if (debug) printf("\n");
 	return TRUE;
 }
 
@@ -616,7 +621,7 @@ inline ibool ibrec_init_offsets_old(page_t *page, rec_t* rec, table_def_t* table
 }
 
 /*******************************************************************/
-inline ibool check_for_a_record(page_t *page, rec_t *rec, table_def_t *table, ulint *offsets) {
+inline ibool check_for_a_record(page_t *page, rec_t *rec, table_def_t *table, ulint *offsets, ulint origin) {
 	ulint offset, data_size;
     int flag;
 
@@ -644,10 +649,9 @@ inline ibool check_for_a_record(page_t *page, rec_t *rec, table_def_t *table, ul
 	// Check if given origin is valid
 	offset = rec - page;
 	if (offset < record_extra_bytes + table->min_rec_header_len) return FALSE;
-	if (debug) printf("ORIGIN=OK ");
 
     flag = rec_get_deleted_flag(rec, page_is_comp(page));
-    if (debug) printf("DELETED=0x%X ", flag);
+
 	// Skip non-deleted records
 	if (deleted_records_only && flag == 0) return FALSE;
 
@@ -657,6 +661,7 @@ inline ibool check_for_a_record(page_t *page, rec_t *rec, table_def_t *table, ul
     do {
         // Get field offsets for current table
         if (debug) {
+            printf("\n\n\nChecking offset: 0x%lX (%lu): [%s] ", origin, origin, table->name);
             printf("\nBITMAP ATTEMPT %i: ", i + 1);
             for (int k = 0; k < MAX_BITMAP_SIZE; k++) {
                 byteToBinary(null_maps->bitmaps[i][k]);
@@ -702,7 +707,7 @@ inline ibool check_for_a_record(page_t *page, rec_t *rec, table_def_t *table, ul
             // Check fields sizes
             if (is_valid && !check_fields_sizes(rec, table, offsets)) {
                 is_valid = FALSE;
-                if (debug) printf("FIELDS_SIZE=FAIL ");
+                if (debug) printf("\nFIELDS_SIZE=FAIL ");
             }
             
             // Check data constraints
@@ -830,16 +835,14 @@ void process_ibpage(page_t *page, bool hex) {
 	while (offset < UNIV_PAGE_SIZE - record_extra_bytes && ( (offset != supremum ) || !is_page_valid) ) {
 		// Get record pointer
 		origin = page + offset;
-		if (debug) printf("\nChecking offset: 0x%lX: ", offset);
 
 		// Check all tables
         for (i = 0; i < table_definitions_cnt; i++) {
             // Get table info
             table_def_t *table = &(table_definitions[i]);
-            if (debug) printf(" (%s) ", table->name);
 
             // Check if origin points to a valid record
-            if (check_for_a_record(page, origin, table, offsets)) {
+            if (check_for_a_record(page, origin, table, offsets, offset)) {
                 actual_records++;
                 if (debug) {
                     printf("\n---------------------------------------------------\n"
